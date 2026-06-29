@@ -1,117 +1,170 @@
-# Task 1: Titanic Data Cleaning and Preprocessing
+# Task 1: Data Cleaning & Preprocessing
 
-A comprehensive, production-grade data cleaning, exploration, and preprocessing pipeline for the famous **Titanic Dataset**. This project implements machine learning best practices to handle missing values, cap outliers, engineer features, encode categories, and standardize data without introducing data leakage.
+## Project Overview
+This project focuses on building a robust, production-grade data cleaning and preprocessing pipeline for the famous **Titanic Dataset**. The raw dataset contains various issues including missing values, outlier columns, and high-cardinality strings. The pipeline cleans, structures, and normalizes the features while strictly preventing data leakage, ensuring the output is perfectly formatted for machine learning model ingestion.
 
----
+## Objective
+The primary objectives of this project are:
+- Implement data hygiene checks to detect and remove duplicate rows.
+- Handle missing values across columns (`Age`, `Cabin`, `Embarked`) using robust, subpopulation-aware statistical methods.
+- Identify and cap extreme outliers in continuous features (`Age`, `Fare`) using the IQR method.
+- Prevent data leakage by performing preprocessing parameters fitting (scaling, imputing, and capping bounds) **only** on the training split.
+- Generate clean diagnostic plots (missing values, boxplots, correlation heatmap) to evaluate feature relationships.
+- Produce clean, preprocessed output datasets split into Train and Validation folders.
 
-## 📂 Project Structure
+## Dataset Information
+The raw dataset contains **891 rows and 12 columns**:
+- `PassengerId` (Unique ID)
+- `Survived` (Target label: 1 if survived, 0 if deceased)
+- `Pclass` (Passenger socio-economic class: 1, 2, or 3)
+- `Name` (Passenger string name)
+- `Sex` (Gender: male or female)
+- `Age` (Numerical age)
+- `SibSp` (Number of siblings/spouses aboard)
+- `Parch` (Number of parents/children aboard)
+- `Ticket` (Ticket string number)
+- `Fare` (Passenger fare price)
+- `Cabin` (Cabin number)
+- `Embarked` (Port of embarkation: C = Cherbourg, Q = Queenstown, S = Southampton)
 
+## Technologies Used
+- **Language**: Python 3.11
+- **Data Manipulation**: Pandas, NumPy
+- **Machine Learning**: Scikit-Learn (StandardScaler, train_test_split)
+- **Data Visualization**: Matplotlib, Seaborn
+- **Environment**: Virtual environment (`venv`), pip
+
+## Project Workflow
+1. **Load Data**: Load the raw dataset from `dataset/Titanic-Dataset.csv`.
+2. **Duplicate Check**: Inspect and drop any duplicate rows.
+3. **Data Splitting**: Split data into **80% Train split** and **20% Validation split** stratified by `Survived` labels.
+4. **Imputation & Outlier Fitting**: Fit preprocessing parameters (group medians, modes, scaler mean/variance, clipping boundaries) on the **Train set only**.
+5. **Transform Splits**: Preprocess both Train and Validation sets independently using training-fit parameters to prevent leakage.
+6. **Feature Engineering**: Extract titles, calculate family sizes, and binary variables.
+7. **One-Hot Encoding**: One-hot encode Sex, Embarked, and Title features with alignment checks.
+8. **Standard Scaling**: Standard scalecontinuous numerical variables.
+9. **Export Outputs**: Save preprocessed datasets and visualizations to disk.
+
+## Folder Structure
 ```text
 Task-1-Data-Cleaning-Preprocessing/
 │
 ├── dataset/
-│   └── Titanic-Dataset.csv        # Raw dataset from Kaggle
+│   └── Titanic-Dataset.csv        # Raw input dataset
 │
 ├── notebooks/
-│   └── preprocessing.ipynb        # Jupyter Notebook with step-by-step pipeline execution
+│   └── preprocessing.ipynb        # Evaluated Jupyter Notebook
 │
 ├── images/
-│   ├── missing_values.png         # Diagnostic plot: count of missing values per feature
-│   ├── boxplot_before.png         # Diagnostic plot: Age & Fare outlier distribution (Before Capping)
-│   ├── boxplot_after.png          # Diagnostic plot: Age & Fare outlier distribution (After Capping)
-│   └── correlation_heatmap.png    # Diagnostic plot: Heatmap of engineered feature correlations
+│   ├── missing_values.png         # Count of missing values per column
+│   ├── boxplot_before.png         # Outlier distribution before capping
+│   ├── boxplot_after.png          # Outlier distribution after capping
+│   └── correlation_heatmap.png    # Correlation heatmap of features
 │
 ├── cleaned_data/
-│   ├── train_cleaned.csv          # Standard-scaled, leak-free training dataset split (80%)
-│   ├── val_cleaned.csv            # Standard-scaled, leak-free validation dataset split (20%)
-│   └── titanic_cleaned.csv        # Combined preprocessed model-ready dataset
+│   ├── train_cleaned.csv          # Scaled training dataset split (80%)
+│   ├── val_cleaned.csv            # Scaled validation dataset split (20%)
+│   └── titanic_cleaned.csv        # Full preprocessed dataset
 │
-├── requirements.txt               # Python package dependencies
-├── README.md                      # Documentation (this file)
-└── preprocessing.py               # Automated modular pipeline execution script
+├── requirements.txt               # Package requirements
+├── README.md                      # Documentation
+└── preprocessing.py               # Modular preprocessing pipeline script
 ```
 
----
+## Exploratory Data Analysis
+- **Missing Value Check**: Checked missing count for all features. Found missing values in `Cabin` (687, 77.1%), `Age` (177, 19.9%), and `Embarked` (2, 0.2%).
+- **Duplicate Check**: Ran `df.duplicated().sum()` to identify if duplicate passenger rows exist (0 duplicates found).
+- **Outlier Diagnostic**: Boxplots plotted for continuous variables `Age` and `Fare` revealed severe skewness and outlier presence, particularly in `Fare`.
 
-## 🛠️ Installation & Setup
+## Missing Value Handling
+- **Age**: Imputed missing values using the group median of the passenger's class (`Pclass`) and gender (`Sex`) computed from the training split.
+- **Embarked**: Imputed missing values with the mode of the training split (`'S'`).
+- **Cabin**: Replaced null values with `'Unknown'` and engineered a binary column `HasCabin` (1 if cabin was present, 0 otherwise) to preserve spatial survival statistics.
 
-1. **Navigate to the Directory**:
+## Encoding Techniques
+- **One-Hot Encoding**: Applied to categorical columns `Sex`, `Embarked`, and `Title` using `pd.get_dummies` with `drop_first=True` to prevent the dummy variable trap.
+- **Alignment Reindexing**: Reindexed the dummy columns of validation splits against training features to guarantee identical shape and dummy layouts under any sub-population.
+
+## Feature Scaling
+- Continuous numerical variables (`Age`, `Fare`, `FamilySize`) are standardized using **Z-score normalization** (`StandardScaler`).
+- The scaler is fit on the training split only and applied separately to training and validation splits to prevent data leakage.
+
+## Outlier Detection
+- Computed outlier boundaries using the **Interquartile Range (IQR)** method:
+  - **Fare Bounds**: $Q1 = 7.9104, Q3 = 31.0000$. Upper threshold capped at $65.6344$, lower threshold at $0$.
+  - **Age Bounds**: $Q1 = 21.5000, Q3 = 36.0000$. Upper threshold capped at $57.7500$, lower threshold at $0$.
+- Outliers are capped (clipped) at the boundaries to prevent distribution skew without dropping important passenger records.
+
+## Final Cleaned Dataset
+The final preprocessed files (`train_cleaned.csv`, `val_cleaned.csv`, `titanic_cleaned.csv`) contain the following clean columns:
+- `PassengerId` (Index)
+- `Survived` (Label)
+- `Pclass` (Class integer)
+- `Age` (Scaled float)
+- `SibSp` (Sibling/spouse count integer)
+- `Parch` (Parent/child count integer)
+- `Fare` (Scaled float)
+- `HasCabin` (Binary integer)
+- `FamilySize` (Scaled float)
+- `IsAlone` (Binary integer)
+- `Sex_male` (One-hot gender dummy)
+- `Embarked_Q`, `Embarked_S` (One-hot port dummies)
+- `Title_Miss`, `Title_Mr`, `Title_Mrs`, `Title_Rare` (One-hot title dummies)
+
+## Results
+- Total Missing Values: **0** across all splits.
+- Total Duplicate Rows: **0**.
+- Features scale range: Means are $\approx 0$ and standard deviations are $\approx 1$ for scaled columns (`Age`, `Fare`, `FamilySize`).
+
+## Screenshots
+Below are the generated diagnostic plots saved during pipeline execution:
+
+### 1. Count of Missing Values per Feature
+![Missing Values Count Plot](images/missing_values.png)
+
+### 2. Outlier Distribution Before Capping
+![Boxplots Before Outlier Treatment](images/boxplot_before.png)
+
+### 3. Outlier Distribution After Capping
+![Boxplots After Outlier Capping](images/boxplot_after.png)
+
+### 4. Correlation Heatmap of Features
+![Correlation Heatmap of Features](images/correlation_heatmap.png)
+
+## Installation
+1. **Navigate to the workspace**:
    ```bash
    cd Task-1-Data-Cleaning-Preprocessing
    ```
-
-2. **Create a Virtual Environment** (Recommended):
+2. **Setup virtual environment**:
    ```bash
    python -m venv .venv
    ```
-
-3. **Activate the Virtual Environment**:
-   * **Windows (PowerShell)**:
+3. **Activate environment**:
+   - Windows (PowerShell):
      ```bash
      .venv\Scripts\activate
      ```
-   * **macOS / Linux**:
+   - macOS / Linux:
      ```bash
      source .venv/bin/activate
      ```
-
-4. **Install Dependencies**:
+4. **Install packages**:
    ```bash
    pip install -r requirements.txt
    ```
 
----
-
-## ⚙️ Preprocessing Workflow & ML Best Practices
-
-This pipeline is designed defensively to align with industry-level machine learning standards:
-
-### 1. Data Hygiene & Duplicate Handling
-- Checks for duplicate rows using `.duplicated().sum()`. If duplicates are found, they are automatically dropped to prevent model bias.
-
-### 2. Preventing Data Leakage
-- **Stratified Train-Test Split**: The raw dataset is split into an **80% Train set** and a **20% Validation set** before any imputation, scaling, or statistics are computed.
-- **Fitting Parameters**: Statistical fits (e.g. median ages, modes, scaler mean/variance, outlier thresholds) are calculated **only** on the training split.
-- **Transformation**: Both training and validation splits are transformed independently using the parameters fitted from the training split. This guarantees that no validation information leaks into the features.
-
-### 3. Missing Value Imputation
-- **Age**: Imputed group-wise using the **median age** of the passenger's class (`Pclass`) and gender (`Sex`) group.
-- **Embarked**: Imputed with the mode (`'S'`) of the training set.
-- **Cabin**: Because over 77% of values are missing, the column is filled with `'Unknown'` and a binary indicator `HasCabin` (1/0) is created to retain survivability correlation.
-
-### 4. Outlier Treatment (IQR Capping)
-- Outliers in `Age` and `Fare` are identified using the Interquartile Range (IQR) method on the training set.
-- Fares above `65.63` and Ages above `57.75` are capped (clipped) at the boundaries rather than deleted, which retains valuable records in a small dataset.
-
-### 5. Feature Engineering
-- **Title Extraction**: Passenger titles are extracted from the `Name` column and standardized into common groups (`Mr`, `Mrs`, `Miss`, `Master`, `Rare`).
-- **Family Size**: Combines siblings/spouses and parents/children (`FamilySize = SibSp + Parch + 1`).
-- **Is Alone**: Created as a binary indicator (1 if `FamilySize == 1`, else 0).
-
-### 6. Encoding & Scaling
-- One-hot encoding is applied to categorical variables (`Sex`, `Embarked`, `Title`) with `drop_first=True` to prevent the dummy variable trap.
-- Numerical features (`Age`, `Fare`, `FamilySize`) are Z-score standardized using a `StandardScaler`.
-
----
-
-## 🚀 How to Run the Pipeline
-
-To execute the data cleaning pipeline and regenerate the outputs, run:
+## How to Run
+Run the automated preprocessing script from your terminal:
 ```bash
 python preprocessing.py
 ```
+This runs the modular pipeline, prints tracking metrics using standard Python logging, and regenerates all CSV splits and visualizations.
 
-Upon successful run, the script outputs the following metrics to the console using python's `logging` library:
-- Shape and check for duplicate rows.
-- Group medians and outlier boundaries.
-- Cleaned dataset shape.
-- Saved file logs.
+## Future Improvements
+1. **Scikit-Learn Pipeline**: Wrap transformations in a custom Scikit-Learn `Pipeline` using `ColumnTransformer` for clean model-fitting integration.
+2. **Robust Scaler**: Implement `RobustScaler` for highly skewed variables like `Fare` to limit outlier Z-score sensitivity.
+3. **Advanced Imputation**: Implement KNN Imputer or MICE algorithms to predict missing Age values.
 
----
-
-## 🔮 Future Improvements
-
-1. **Cross-Validation Pipeline**: Integrate the preprocessing steps directly into a Scikit-Learn `Pipeline` or `ColumnTransformer` to automate preprocessing during cross-validation.
-2. **Robust Scaler**: Use `RobustScaler` instead of `StandardScaler` for the highly skewed `Fare` column to limit Z-score sensitivity to outliers.
-3. **Advanced Imputation**: Use KNN Imputer or iterative imputers (MICE) to predict missing Age values instead of group-wise medians.
-4. **Deck Extraction**: Extract the deck letter from the Cabin column to capture spatial survival correlation.
+## Author
+Senior Machine Learning Engineer / Intern Technical Evaluator
