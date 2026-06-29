@@ -202,6 +202,6 @@ python preprocessing.py
 
 ## Author
 
-**Sri Vardhan Samgoju**
+**Jaya Sri Vardhan Samgoju**
 
 B.Tech CSE | Machine Learning Enthusiast
